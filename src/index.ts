@@ -13,7 +13,7 @@ const server = new McpServer({
 	version: "1.0.0",
 });
 
-const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
 
 server.tool(
 	"getAccountInfo",
@@ -70,6 +70,77 @@ server.tool(
 					{
 						type: "text",
 						text: `Error :${(error as Error).message}`,
+					},
+				],
+			};
+		}
+	}
+);
+
+server.tool(
+	"analyzeFailedTransaction",
+	"Analyze why a Solana transaction failed",
+	{ signature: z.string().describe("Solana transaction signature") },
+	async ({ signature }) => {
+		try {
+			const transaction = await connection.getParsedTransaction(
+				signature,
+				{ maxSupportedTransactionVersion: 0 }
+			);
+
+            
+			if (!transaction) {
+                return {
+                    content: [{ type: "text", text: "Transaction not found" }],
+				};
+			}
+            console.log("check transaction: ", transaction.meta)
+            
+			if (!transaction.meta?.err) {
+				return {
+					content: [
+						{ type: "text", text: "✅ Transaction was successful" },
+					],
+				};
+			}
+
+			// Extract error logs
+			const logs = transaction.meta.logMessages || [];
+			const errorLog = logs.find(
+				(log) => log.includes("Error:") || log.includes("failed")
+			);
+
+			let failureReason = "Unknown error";
+			if (errorLog) {
+				if (errorLog.includes("insufficient funds")) {
+					failureReason =
+						"❌ Insufficient funds to complete the transaction.";
+				} else if (errorLog.includes("BlockhashNotFound")) {
+					failureReason =
+						"⏳ Transaction timed out (blockhash expired).";
+				} else if (errorLog.includes("AccountNotFound")) {
+					failureReason =
+						"⚠️ One of the accounts in the transaction does not exist.";
+				} else {
+					failureReason = errorLog;
+				}
+			}
+
+			return {
+				content: [
+					{
+						type: "text",
+						text: `❌ Transaction Failed\n**Reason:** ${failureReason}`,
+					},
+					{ type: "text", text: `📜 Logs:\n${logs.join("\n")}` },
+				],
+			};
+		} catch (error) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Error: ${(error as Error).message}`,
 					},
 				],
 			};
