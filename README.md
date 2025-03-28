@@ -56,7 +56,7 @@ Provides detailed information about a specific Solana transaction.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/kirtiraj22/solana-mcp
+git clone https://github.com/kirtiraj22/Solana-DeFi-Analytics-MCP-Server
 cd solana-mcp
 ```
 
